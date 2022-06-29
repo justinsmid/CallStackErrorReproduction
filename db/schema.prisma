@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 datasource db {
   provider = "sqlite"
   url      = env("DATABASE_URL")
@@ -9,8 +6,6 @@ datasource db {
 generator client {
   provider = "prisma-client-js"
 }
-
-// --------------------------------------
 
 model User {
   id             Int      @id @default(autoincrement())
@@ -21,8 +16,110 @@ model User {
   hashedPassword String?
   role           String   @default("USER")
 
+  companyProduct   CompanyProduct @relation(fields: [companyProductId], references: [id])
+  companyProductId Int
+
   tokens   Token[]
   sessions Session[]
+
+  createdPackage Package[] @relation("createdPackages")
+  editedPackage  Package[] @relation("editedPackages")
+
+  createdPackageStep PackageStep[] @relation("createdPackageSteps")
+  editedPackageStep  PackageStep[] @relation("editedPackageSteps")
+
+  createdPackageStepType PackageStepType[] @relation("createdPackageStepTypes")
+  editedPackageStepType  PackageStepType[] @relation("editedPackageStepTypes")
+}
+
+model CompanyProduct {
+  id Int @id @default(autoincrement())
+
+  User            User[]
+  Package         Package[]
+  PackageStep     PackageStep[]
+  PackageStepType PackageStepType[]
+}
+
+model Package {
+  id   Int    @id @default(autoincrement())
+  code String
+
+  companyProduct   CompanyProduct @relation(fields: [companyProductId], references: [id])
+  companyProductId Int
+
+  createdBy   User @relation(name: "createdPackages", fields: [createdById], references: [id])
+  createdById Int
+
+  editedBy   User @relation(name: "editedPackages", fields: [editedById], references: [id])
+  editedById Int
+
+  translations PackageTranslation[]
+  PackageStep  PackageStep[]
+}
+
+model PackageTranslation {
+  id     Int    @id @default(autoincrement())
+  name   String
+  locale String
+
+  packageId Int     @map("translatable_id")
+  package   Package @relation(fields: [packageId], references: [id])
+}
+
+model PackageStep {
+  id Int @id @default(autoincrement())
+
+  type   PackageStepType @relation(fields: [typeId], references: [id])
+  typeId Int             @map("mrb_module_package_step_type_id")
+
+  companyProduct   CompanyProduct @relation(fields: [companyProductId], references: [id])
+  companyProductId Int            @map("mrb_sys_company_product_id")
+
+  createdById Int  @map("created_by_id")
+  createdBy   User @relation(name: "createdPackageSteps", fields: [createdById], references: [id])
+
+  editedById Int  @map("edited_by_id")
+  editedBy   User @relation(name: "editedPackageSteps", fields: [editedById], references: [id])
+
+  packageId Int     @map("mrb_module_package_id")
+  package   Package @relation(fields: [packageId], references: [id])
+
+  translations PackageStepTranslation[]
+}
+
+model PackageStepTranslation {
+  id     Int    @id @default(autoincrement())
+  name   String
+  locale String
+
+  stepId Int         @map("translatable_id")
+  step   PackageStep @relation(fields: [stepId], references: [id])
+}
+
+model PackageStepType {
+  id   Int    @id @default(autoincrement())
+  code String
+
+  companyProduct   CompanyProduct @relation(fields: [companyProductId], references: [id])
+  companyProductId Int            @map("mrb_sys_company_product_id")
+
+  createdById Int  @map("created_by_id")
+  createdBy   User @relation(name: "createdPackageStepTypes", fields: [createdById], references: [id])
+
+  editedById Int  @map("edited_by_id")
+  editedBy   User @relation(name: "editedPackageStepTypes", fields: [editedById], references: [id])
+
+  steps        PackageStep[]
+  translations PackageStepTypeTranslation[]
+}
+
+model PackageStepTypeTranslation {
+  id   Int    @id @default(autoincrement())
+  name String
+
+  stepTypeId Int             @map("translatable_id")
+  stepType   PackageStepType @relation(fields: [stepTypeId], references: [id])
 }
 
 model Session {
@@ -46,8 +143,6 @@ model Token {
   updatedAt   DateTime @updatedAt
   hashedToken String
   type        String
-  // See note below about TokenType enum
-  // type        TokenType
   expiresAt   DateTime
   sentTo      String
 
@@ -56,10 +151,3 @@ model Token {
 
   @@unique([hashedToken, type])
 }
-
-// NOTE: It's highly recommended to use an enum for the token type
-//       but enums only work in Postgres.
-//       See: https://blitzjs.com/docs/database-overview#switch-to-postgre-sql
-// enum TokenType {
-//   RESET_PASSWORD
-// }
